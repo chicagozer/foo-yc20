@@ -25,27 +25,32 @@ jobs:
           New-Item -ItemType Directory -Force -Path "third_party/faust/include" | Out-Null
           Copy-Item -Recurse -Force "third_party/faust-master-dev/architecture/faust" "third_party/faust/include/faust"
 
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure
-        shell: pwsh
+        shell: cmd
         run: |
-          cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 `
-            -DFAUST_INCLUDE_DIR="${{ github.workspace }}/third_party/faust/include" `
-            -DYC20_LV2_BUNDLE_DIR="$env:USERPROFILE/.lv2/foo-yc20.lv2"
+          cmake -S . -B build-msvc -G Ninja ^
+            -DFAUST_INCLUDE_DIR="%GITHUB_WORKSPACE%/third_party/faust/include" ^
+            -DYC20_LV2_BUNDLE_DIR="%USERPROFILE%/.lv2/foo-yc20.lv2"
 
       - name: Build
-        shell: pwsh
-        run: cmake --build build-msvc --config Release
+        shell: cmd
+        run: cmake --build build-msvc
 
       - name: Run headless test
-        shell: pwsh
-        run: cmake --build build-msvc --config Release --target test-headless
+        shell: cmd
+        run: cmake --build build-msvc --target test-headless
 
       - name: Package LV2 bundle
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path dist/foo-yc20.lv2 | Out-Null
-          Copy-Item "build-msvc/Release/foo-yc20.dll" "dist/foo-yc20.lv2/foo-yc20.dll" -Force
+          Copy-Item "build-msvc/foo-yc20.dll" "dist/foo-yc20.lv2/foo-yc20.dll" -Force
           Copy-Item "src/foo-yc20.lv2/foo-yc20.ttl" "dist/foo-yc20.lv2/foo-yc20.ttl" -Force
           Copy-Item "build-msvc/foo-yc20.lv2/manifest.ttl" "dist/foo-yc20.lv2/manifest.ttl" -Force
           Compress-Archive -Path "dist/foo-yc20.lv2" -DestinationPath "dist/foo-yc20-lv2-windows-x64.zip" -Force
